@@ -37,7 +37,6 @@ jobs:
       - name: Install Cordova
         run: |
           npm install -g cordova
-          cordova telemetry off
 
       - name: Create Android project
         run: |
