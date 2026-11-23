@@ -31,10 +31,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+          # The action expects a space-separated list, not a YAML multiline list.
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: Install Cordova
         run: |
@@ -43,11 +41,11 @@ jobs:
 
       - name: Create Android project
         run: |
-          cordova create /tmp/android-app com.toska.goldclicker GoldClicker
+          cordova create /tmp/android-app com.golda.koch Golda
           cd /tmp/android-app
           cordova platform add android@13.0.0
 
-      - name: Copy game files
+      - name: Copy game files and configure app
         run: |
           rm -rf /tmp/android-app/www/*
           rsync -av \
@@ -56,16 +54,41 @@ jobs:
             --exclude='README.md' \
             ./ /tmp/android-app/www/
 
-          # Cordova expects a lowercase index.html entry point.
+          # Cordova requires a lowercase index.html entry point.
           if [ ! -f /tmp/android-app/www/index.html ] && [ -f /tmp/android-app/www/Index.html ]; then
             cp /tmp/android-app/www/Index.html /tmp/android-app/www/index.html
           fi
 
-      - name: Verify web entry point
+          # Set the requested application ID, version and launcher icon.
+          cat > /tmp/android-app/config.xml <<'EOF'
+          <?xml version='1.0' encoding='utf-8'?>
+          <widget id="com.golda.koch" version="1.0.0"
+              xmlns="http://www.w3.org/ns/widgets"
+              xmlns:cdv="http://cordova.apache.org/ns/1.0">
+              <name>Golda</name>
+              <description>Golda Clicker</description>
+              <content src="index.html" />
+              <access origin="*" />
+              <allow-intent href="http://*/*" />
+              <allow-intent href="https://*/*" />
+              <platform name="android">
+                  <icon src="www/1795442215742.png" />
+              </platform>
+          </widget>
+          EOF
+
+      - name: Verify app files and configuration
         run: |
           test -s /tmp/android-app/www/index.html
-          echo "HTML entry point found:"
+          test -s /tmp/android-app/www/1795442215742.png
+          grep -q 'id="com.golda.koch"' /tmp/android-app/config.xml
+          grep -q 'version="1.0.0"' /tmp/android-app/config.xml
+          echo "HTML entry point:"
           ls -lh /tmp/android-app/www/index.html
+          echo "Launcher icon:"
+          ls -lh /tmp/android-app/www/1795442215742.png
+          echo "Application ID and version:"
+          grep '<widget' /tmp/android-app/config.xml
 
       - name: Build APK
         run: |
@@ -75,6 +98,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Gold-Clicker-APK
+          name: Golda-1.0.0-APK
           path: /tmp/android-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
